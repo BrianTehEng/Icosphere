@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<!--
+To change this license header, choose License Headers in Project Properties.
+To change this template file, choose Tools | Templates
+and open the template in the editor.
+-->
+<html>
+    <head>
+        <title>HELLO</title>
+        
+    </head>
+    <canvas id="canvas" width="1000" height="1000"></canvas> 
+   
+   
+      <script id="2d-vertex-shader" type="x-shader/x-vertex">
+     attribute vec4 a_position;
+     attribute vec4 a_color;
+ 
+     uniform mat4 u_matrix;
+ 
+     varying vec4 v_color;
+ 
+    void main() {
+    // Multiply the position by the matrix.
+     gl_Position = u_matrix * a_position;
+ 
+        
+     // Pass the color to the fragment shader.
+     v_color = a_color;
+     }
+    
+    </script>
+     
+    <script id="2d-fragment-shader" type="x-shader/x-fragment">
+precision mediump float;
+ 
+// Passed in from the vertex shader.
+varying vec4 v_color;
+ 
+void main() {
+   gl_FragColor = v_color;
+}
+        
+
+    </script>
+        
+
+    
+     <script src="BoilerPlate.js"></script>
+     <script src="matrixStuff.js"></script>
+     <script src="geometry.js"></script>
+
+      
+    <script>
+        
+    window.onerror = function(msg, url, lineno) {
+	alert(url + '(' + lineno + '): ' + msg);
+    }
+        
+    // Get A WebGL context
+    var canvas = document.getElementById("canvas");
+    canvas.fillstyle
+    var gl = canvas.getContext("experimental-webgl");
+         
+     //gl.enable(gl.CULL_FACE);
+     gl.enable(gl.DEPTH_TEST);
+   
+    var program = createProgramFromScripts(gl, "2d-vertex-shader", "2d-fragment-shader");
+    gl.useProgram(program);
+     
+    // look up where the vertex data needs to go.
+    var positionLocation = gl.getAttribLocation(program, "a_position");
+    var colorLocation = gl.getAttribLocation(program, "a_color");
+    var matrixLocation=gl.getUniformLocation(program,"u_matrix");
+    
+       
+    // set the resolution
+    var resolutionLocation = gl.getUniformLocation(program, "u_resolution");
+    gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+    
+    
+
+function setGeometry(gl) {
+  gl.bufferData(
+      gl.ARRAY_BUFFER,
+      myVertices,
+      gl.STATIC_DRAW);
+}
+
+function setColors(gl) {
+  gl.bufferData(
+      gl.ARRAY_BUFFER,
+      myColor,
+      gl.STATIC_DRAW);
+}
+ 
+ 
+    //var translation = [-150, 0, -360];
+    var translation=[0,100,-360];
+    var rotation = [degToRad(0), degToRad(0), degToRad(0)];
+    var scale = [40,40,40];
+    var fieldOfViewRadians = degToRad(60);
+    var angle=0;
+    var tick=0;
+    var tick_interval=8;
+    var currentNumberofVertices=3;
+    var numberOfTrianglesToDraw=3;
+   
+   createInitialGeometry();
+   createBuffers();
+
+      // Draw the scene.
+      function drawScene() {
+           
+                // Clear the canvas AND the depth buffer.
+                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+                //Rotate The Scene
+                angle=(angle+3)%360;
+                rotation[1]=degToRad(angle);
+
+                 // Compute the matrices
+                 var aspect = canvas.clientWidth / canvas.clientHeight;
+                 var projectionMatrix =makePerspective(fieldOfViewRadians, aspect, 1, 2000);
+                 var translationMatrix =makeTranslation(translation[0], translation[1], translation[2]);
+                 var rotationXMatrix = makeXRotation(rotation[0]);
+                 var rotationYMatrix = makeYRotation(rotation[1]);
+                 var rotationZMatrix = makeZRotation(rotation[2]);
+                 var scaleMatrix = makeScale(scale[0], scale[1], scale[2]);
+
+               // Multiply the matrices.
+               var matrix = matrixMultiply(scaleMatrix, rotationZMatrix);
+               matrix = matrixMultiply(matrix, rotationYMatrix);
+               matrix = matrixMultiply(matrix, rotationXMatrix);
+               matrix = matrixMultiply(matrix, translationMatrix);
+                        matrix = matrixMultiply(matrix, projectionMatrix);
+
+               // Set the matrix.
+               gl.uniformMatrix4fv(matrixLocation, false, matrix);
+
+                           
+               
+               var totalNumberofVertices=myVertices.length/3;
+               
+               
+               //increase tick interval after first set of triangles
+               if(currentNumberofVertices>=78){
+                  tick_interval=1;
+                  numberOfTrianglesToDraw=18;
+               }
+               
+               
+               if(currentNumberofVertices>=1000){
+                  tick_interval=1;
+                  numberOfTrianglesToDraw=180;
+               }
+                
+                if (currentNumberofVertices >= totalNumberofVertices) {
+                    currentNumberofVertices = totalNumberofVertices;
+                    tick = 0;
+                                      
+               }
+                 // Draw the Icosehedron
+                gl.drawArrays(gl.TRIANGLES, 0, currentNumberofVertices);
+                   tick++;
+
+                  if (tick > tick_interval) {
+                 currentNumberofVertices+= numberOfTrianglesToDraw;
+                  tick = 0;
+                 }
+       }
+
+  
+      setInterval(function(){ drawScene(); }, 50);
+      
+    
+    
+    
+    
+    function createBuffers(){
+        
+        
+    // Create a buffer  for position
+    var buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(positionLocation);
+    gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 0, 0);
+    
+    setGeometry(gl);
+      
+    
+    // Create a buffer for colors.
+    var buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.enableVertexAttribArray(colorLocation);
+    // We'll supply RGB as bytes.
+    gl.vertexAttribPointer(colorLocation, 3, gl.UNSIGNED_BYTE, true, 0, 0);
+ 
+     // Set Colors.
+     setColors(gl);   
+    }
+    
+    
+       </script>
+    
+   
+    
+</html>
